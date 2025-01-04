@@ -1,66 +1,67 @@
-# Установите имя пользователя, которому нужно предоставить права
-# Пример: "Drago"
+# РЈСЃС‚Р°РЅРѕРІРёС‚Рµ РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РєРѕС‚РѕСЂРѕРјСѓ РЅСѓР¶РЅРѕ РїСЂРµРґРѕСЃС‚Р°РІРёС‚СЊ РїСЂР°РІР°
+# РџСЂРёРјРµСЂ: "Drago"
 $targetUser = "Drago"
 
-# Проверка аргумента (путь к папке)
+# РџСЂРѕРІРµСЂРєР° Р°СЂРіСѓРјРµРЅС‚Р° (РїСѓС‚СЊ Рє РїР°РїРєРµ)
 if ($args.Count -eq 0) {
-    Write-Host "Не указан путь к папке. Скрипт завершен." -ForegroundColor Red
+    Write-Host "РќРµ СѓРєР°Р·Р°РЅ РїСѓС‚СЊ Рє РїР°РїРєРµ. РЎРєСЂРёРїС‚ Р·Р°РІРµСЂС€РµРЅ." -ForegroundColor Red
     exit
 }
 
-# Получение пути из аргумента
+# РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё РёР· Р°СЂРіСѓРјРµРЅС‚Р°
 $folderPath = $args[0]
 
-# Проверка существования папки
+# РџСЂРѕРІРµСЂРєР° СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёСЏ РїР°РїРєРё
 if (-not (Test-Path $folderPath)) {
-    Write-Host "Указанный путь не существует: $folderPath. Скрипт завершен." -ForegroundColor Red
+    Write-Host "РЈРєР°Р·Р°РЅРЅС‹Р№ РїСѓС‚СЊ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚: $folderPath. РЎРєСЂРёРїС‚ Р·Р°РІРµСЂС€РµРЅ." -ForegroundColor Red
     exit
 }
 
-# Функция для предоставления полного доступа
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ РІР»Р°РґРµР»СЊС†Р°
+function Set-Owner {
+    param (
+        [string]$path,
+        [string]$user
+    )
+    try {
+        Write-Host "==> РќР°Р·РЅР°С‡Р°СЋ РІР»Р°РґРµР»СЊС†Р° $user РґР»СЏ $path" -ForegroundColor Yellow
+        takeown.exe /f $path /r /d y
+        Write-Host "вњ… Р’Р»Р°РґРµР»РµС† СѓСЃРїРµС€РЅРѕ РёР·РјРµРЅРµРЅ РЅР° $user РґР»СЏ $path" -ForegroundColor Green
+    } catch {
+        Write-Host "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РјРµРЅРёС‚СЊ РІР»Р°РґРµР»СЊС†Р° РґР»СЏ: $path" -ForegroundColor Red
+    }
+}
+
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅРёСЏ РїРѕР»РЅРѕРіРѕ РґРѕСЃС‚СѓРїР°
 function Grant-FullAccess {
     param (
         [string]$path,
         [string]$user
     )
-
-    # Экранируем путь и пользователя
-    $escapedPath = "`"$path`""
-    $escapedUser = "`"$user`""
-
-    # Попытка снять запрещающие правила (Deny)
     try {
-        Start-Process -FilePath "icacls.exe" -ArgumentList "$escapedPath /remove:d $escapedUser /T" -NoNewWindow -Wait
+        Write-Host "==> РџСЂРµРґРѕСЃС‚Р°РІР»СЏСЋ РїРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї $user РґР»СЏ $path" -ForegroundColor Yellow
+        icacls $path /grant "$user:F" /T /C
+        Write-Host "вњ… РџРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї СѓСЃРїРµС€РЅРѕ РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅ $user РґР»СЏ $path" -ForegroundColor Green
     } catch {
-        Write-Host "Не удалось снять запреты для: $path" -ForegroundColor Red
-    }
-
-    # Попытка предоставить полный доступ
-    try {
-        Start-Process -FilePath "icacls.exe" -ArgumentList "$escapedPath /grant $escapedUser:F /T" -NoNewWindow -Wait
-    } catch {
-        Write-Host "Не удалось предоставить полный доступ для: $path" -ForegroundColor Red
+        Write-Host "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРµРґРѕСЃС‚Р°РІРёС‚СЊ РїРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї РґР»СЏ: $path" -ForegroundColor Red
     }
 }
 
-# Предоставление прав корневой папке
-Write-Host "Предоставление прав корневой папке: $folderPath" -ForegroundColor Yellow
+# РЁР°Рі 1: РќР°Р·РЅР°С‡РёС‚СЊ РІР»Р°РґРµР»СЊС†Р°
+Set-Owner -path $folderPath -user $targetUser
+
+# РЁР°Рі 2: РџСЂРµРґРѕСЃС‚Р°РІРёС‚СЊ РїРѕР»РЅС‹Р№ РґРѕСЃС‚СѓРї
 Grant-FullAccess -path $folderPath -user $targetUser
 
-# Попытка сканировать и предоставить доступ
-Write-Host "Проверка и предоставление прав в папке: $folderPath" -ForegroundColor Yellow
+# РЁР°Рі 3: РћР±СЂР°Р±РѕС‚РєР° РІР»РѕР¶РµРЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
+Write-Host "==> РћР±СЂР°Р±РѕС‚РєР° РІР»РѕР¶РµРЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ: $folderPath" -ForegroundColor Cyan
 Get-ChildItem -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
     $itemPath = $_.FullName
-    try {
-        if (Test-Path $itemPath) {
-            Write-Host "Обработка элемента: $itemPath" -ForegroundColor Cyan
-
-            # Предоставить полный доступ
-            Grant-FullAccess -path $itemPath -user $targetUser
-        }
-    } catch {
-        Write-Host "Не удалось обработать элемент: $itemPath. Пропускаю." -ForegroundColor Red
+    if (Test-Path $itemPath) {
+        Write-Host "рџ”„ РћР±СЂР°Р±РѕС‚РєР° СЌР»РµРјРµРЅС‚Р°: $itemPath" -ForegroundColor Magenta
+        Set-Owner -path $itemPath -user $targetUser
+        Grant-FullAccess -path $itemPath -user $targetUser
     }
 }
 
-Write-Host "Все проверки завершены. Полный доступ предоставлен." -ForegroundColor Green
+Write-Host "вњ… Р’СЃРµ РѕРїРµСЂР°С†РёРё Р·Р°РІРµСЂС€РµРЅС‹. Р’Р»Р°РґРµР»РµС† РЅР°Р·РЅР°С‡РµРЅ, РїСЂР°РІР° РїСЂРµРґРѕСЃС‚Р°РІР»РµРЅС‹." -ForegroundColor Green
